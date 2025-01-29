@@ -254,6 +254,30 @@ function InstalledGamesSection() {
     fetchGames();
   }, []);
 
+  const handleLaunchOptionsBackupClick = async (game: { appid: number; name: string })=> {
+    setClickedGame(game);
+    try {
+      const userId = await SteamClient.User.GetSteamId();
+      const currentOptions = await SteamClient.Apps.GetLaunchOptionsForApp(game.appid);
+      if (currentOptions) {
+        try {
+          localStorage.setItem(`launch-options-${userId}-${game.appid}`, currentOptions);
+          setResult(`Launch options backed up successfully for ${game.name}.`);
+        } catch (storageError) {
+          setResult(`Error backing up launch options: ${storageError}`);
+        }
+      }
+    }
+    catch (error) {
+      if (error instanceof Error) {
+          setResult(`Error backing up launch options: ${error.message}`);
+      } else {
+          setResult('Error backing up launch options');
+      }
+    }
+  };
+
+
   const handlePatchClick = async (game: { appid: number; name: string }) => {
     setClickedGame(game);
     try {
@@ -282,6 +306,34 @@ function InstalledGamesSection() {
     }
   };
 
+  const handleRestoreLaunchOptionsClick = async (game: { appid: number; name: string }) => {
+    setClickedGame(game);
+    try {
+      const userId = await SteamClient.User.GetSteamId();
+      const backup = localStorage.getItem(`launch-options-${userId}-${game.appid}`);
+      if (backup) {
+        try {
+          await SteamClient.Apps.SetAppLaunchOptions(game.appid, backup);
+          setResult(`Launch options restored successfully for ${game.name}.`);
+        } catch (error) {
+          if (error instanceof Error) {
+            setResult(`Error restoring launch options: ${error.message}`);
+          } else {
+            setResult('Error restoring launch options');
+          }
+        }
+      } else {
+        setResult(`No backup found for ${game.name}.`);
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        setResult(`Error restoring launch options: ${error.message}`);
+      } else {
+        setResult('Error restoring launch options');
+      }
+    }
+  }
+
   return (
     <PanelSection title="Select a game below to patch or unpatch:">
       {games.map((game) => (
@@ -293,6 +345,12 @@ function InstalledGamesSection() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <ButtonItem
                 layout="below"
+                onClick={() => handleLaunchOptionsBackupClick(game)}
+                >
+                Backup Launch Options
+              </ButtonItem>
+              <ButtonItem
+                layout="below"
                 onClick={() => handlePatchClick(game)}
               >
                 Patch
@@ -302,6 +360,12 @@ function InstalledGamesSection() {
                 onClick={() => handleUnpatchClick(game)}
               >
                 Unpatch
+              </ButtonItem>
+              <ButtonItem
+                layout="below"
+                onClick={() => handleRestoreLaunchOptionsClick(game)}
+                >
+                Restore Launch Options
               </ButtonItem>
             </div>
           </div>
